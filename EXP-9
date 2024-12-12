@@ -1,0 +1,51 @@
+#include <windows.h>
+#include <iostream>
+#include <cstring>
+
+#define SHM_SIZE 1024
+#define SHM_NAME "Global\\MySharedMemory"
+
+int main() {
+    // Create a file mapping object for shared memory
+    HANDLE hMapFile = CreateFileMapping(
+        INVALID_HANDLE_VALUE,    // Use paging file
+        NULL,                    // Default security attributes
+        PAGE_READWRITE,          // Read/Write access
+        0,                        // Maximum object size (high-order DWORD)
+        SHM_SIZE,                 // Maximum object size (low-order DWORD)
+        SHM_NAME);                // Name of mapping object
+
+    if (hMapFile == NULL) {
+        std::cerr << "Could not create file mapping object. Error code: " << GetLastError() << std::endl;
+        return 1;
+    }
+
+    // Map the shared memory to the process's address space
+    LPCTSTR pBuf = (LPTSTR)MapViewOfFile(
+        hMapFile,                // Handle to map object
+        FILE_MAP_ALL_ACCESS,     // Read/Write access
+        0,                        // File offset (high-order DWORD)
+        0,                        // File offset (low-order DWORD)
+        SHM_SIZE);                // Number of bytes to map
+
+    if (pBuf == NULL) {
+        std::cerr << "Could not map view of file. Error code: " << GetLastError() << std::endl;
+        CloseHandle(hMapFile);
+        return 1;
+    }
+
+    // Write to the shared memory
+    strcpy((char*)pBuf, "Hello, shared memory!");
+
+    // Print the data written to shared memory
+    std::cout << "Data written to shared memory: " << pBuf << std::endl;
+
+    // Optionally, read from the memory to verify content
+    std::cout << "Read from shared memory: " << pBuf << std::endl;
+
+    // Unmap the view and close the file mapping object
+    UnmapViewOfFile(pBuf);
+    CloseHandle(hMapFile);
+
+    return 0;
+}
